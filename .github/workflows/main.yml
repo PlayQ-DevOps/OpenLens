@@ -39,7 +39,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
       - name: Build Lens
         run: |
-          env ELECTRON_BUILDER_EXTRA_ARGS="--arm64 --x64" make build
+          make build
         env:
           ELECTRON_BUILDER_EXTRA_ARGS: ${{ matrix.electron_builder_extra_args }}
         shell: bash
