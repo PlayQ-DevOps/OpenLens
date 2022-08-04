@@ -37,6 +37,13 @@ jobs:
         run: |
           choco install visualstudio2019buildtools visualstudio2019-workload-vctools
         if: ${{ matrix.os == 'windows-latest' }}
+      - name: Build Lens
+        run: |
+          env ELECTRON_BUILDER_EXTRA_ARGS="--arm64 --x64" make build
+        env:
+          ELECTRON_BUILDER_EXTRA_ARGS: ${{ matrix.electron_builder_extra_args }}
+        shell: bash
+        working-directory: lens
       - name: Create releasefiles Directory
         run: |
           mkdir releasefiles
