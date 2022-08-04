@@ -10,6 +10,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            electron_builder_extra_args: --arm64 --x64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -30,39 +33,48 @@ jobs:
           cd lens
           git checkout v${{ env.LENS_VERSION }}
           node update.js
-      - name: Build Lens
+      - name: Install Prerequisites - Windows
+        run: |
+          choco install visualstudio2019buildtools visualstudio2019-workload-vctools
+        if: ${{ matrix.os == 'windows-latest' }}
+      - name: Create releasefiles Directory
         run: |
           mkdir releasefiles
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            choco install visualstudio2019buildtools visualstudio2019-workload-vctools
-          fi
-          if [ "$RUNNER_OS" == "macOS" ]; then
-                env ELECTRON_BUILDER_EXTRA_ARGS="--arm64 --x64" make build
-                for file in dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.dmg; do
-                    if [[ "$file" == *"arm64"* ]]; then
-                        cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}-arm64.dmg
-                    else
-                        cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}.dmg
-                    fi
-                done
-                for file in dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.zip; do
-                    if [[ "$file" == *"arm64"* ]]; then
-                        cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}-arm64.zip
-                    else
-                        cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}.zip
-                    fi
-                done
-          elif [ "$RUNNER_OS" == "Linux" ]; then
-                make build
-                cp dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.x86_64.AppImage releasefiles/OpenLens-${{ env.LENS_VERSION }}.AppImage
-                cp dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.amd64.deb releasefiles/OpenLens-${{ env.LENS_VERSION }}.deb
-                cp dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.x86_64.rpm releasefiles/OpenLens-${{ env.LENS_VERSION }}.rpm
-          else
-                make build
-                cp dist/OpenLens*.exe releasefiles/OpenLens-${{ env.LENS_VERSION }}.exe
-          fi
         shell: bash
         working-directory: lens
+      - name: Collect Release Files - Windows
+        run: |
+          cp dist/OpenLens*.exe releasefiles/OpenLens-${{ env.LENS_VERSION }}.exe
+        shell: bash
+        working-directory: lens
+        if: ${{ matrix.os == 'windows-latest' }}
+      - name: Collect Release Files - macOS
+        run: |
+          for file in dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.dmg; do
+              if [[ "$file" == *"arm64"* ]]; then
+                  cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}-arm64.dmg
+              else
+                  cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}.dmg
+              fi
+          done
+          for file in dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.zip; do
+              if [[ "$file" == *"arm64"* ]]; then
+                  cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}-arm64.zip
+              else
+                  cp "$file" releasefiles/OpenLens-${{ env.LENS_VERSION }}.zip
+              fi
+          done
+        shell: bash
+        working-directory: lens
+        if: ${{ matrix.os == 'macos-latest' }}
+      - name: Collect Release Files - Linux
+        run: |
+          cp dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.x86_64.AppImage releasefiles/OpenLens-${{ env.LENS_VERSION }}.AppImage
+          cp dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.amd64.deb releasefiles/OpenLens-${{ env.LENS_VERSION }}.deb
+          cp dist/OpenLens-${{ env.LENS_VERSION }}-latest.*.x86_64.rpm releasefiles/OpenLens-${{ env.LENS_VERSION }}.rpm
+        shell: bash
+        working-directory: lens
+        if: ${{ matrix.os == 'ubuntu-latest' }}
       - name: Calculate SHA256 checksum
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
